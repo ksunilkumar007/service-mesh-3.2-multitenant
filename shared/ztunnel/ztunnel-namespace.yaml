@@ -1,0 +1,31 @@
+# =============================================================================
+# Namespace — ztunnel
+# =============================================================================
+# PURPOSE:
+#   Dedicated namespace for the ztunnel DaemonSet pods.
+#   Must be created BEFORE applying ztunnel.yaml.
+#
+# WHY "ztunnel" NOT "ztunnel-a":
+#   There is only ONE ZTunnel CR per cluster (name: default — enforced).
+#   The namespace is shared — naming it ztunnel-a would imply tenant-a
+#   ownership which is misleading. "ztunnel" reflects reality: it is a
+#   cluster-wide shared component, same as SNO.
+#
+#   Tenant isolation is achieved through nodeSelector + xdsAddress
+#   inside the ZTunnel CR — not through namespace separation.
+#
+# LABELS:
+#   istio-discovery-a: enabled
+#     istiod-a discoverySelector matches this — istiod-a monitors ztunnel
+#     health and grants node-proxy trust to pods in this namespace.
+#
+#   When tenant-b is added:
+#     istio-discovery-b: enabled must also be added so istiod-b
+#     can also discover and trust ztunnel pods.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ztunnel
+  labels:
+    istio-discovery-a: enabled

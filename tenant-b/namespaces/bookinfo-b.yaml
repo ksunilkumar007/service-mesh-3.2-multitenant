@@ -1,0 +1,38 @@
+# =============================================================================
+# Namespace — bookinfo-b
+# =============================================================================
+# SOURCE:
+#   New file — no direct SNO equivalent.
+#   SNO used "bookinfo" created via oc new-project + oc label commands.
+#   Here the namespace is declarative YAML from the start.
+#
+# LABELS:
+#   mesh=tenant-b
+#     Matches istiod-b discoverySelector (Category 2 — workload namespaces).
+#     Without this, istiod-b cannot see bookinfo-b Services or Endpoints.
+#     bookinfo-b pods would have no xDS config pushed to ztunnel.
+#
+#   istio.io/dataplane-mode=ambient
+#     Enrolls all pods in this namespace in ambient mode.
+#     CNI plugin detects this label at pod creation and inserts
+#     iptables rules redirecting traffic to ztunnel on port 15008.
+#     Pods stay 1/1 — no sidecars injected.
+#
+# WHY NOT istio-discovery=enabled (SNO label):
+#   SNO used a single discoverySelector: istio-discovery=enabled
+#   for ALL namespaces. On multi-tenant, workload namespaces use
+#   mesh=tenant-b so istiod-b can distinguish its own workloads
+#   from tenant-b workloads. istiod-b will never see this namespace.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bookinfo-b
+  labels:
+    # Makes this namespace visible to istiod-b discoverySelectors
+    mesh: tenant-b
+    istio.io/rev: tenant-b
+    # Prevent sidecar injection — ambient mode uses ztunnel not sidecars
+    istio-injection: disabled
+    # Enrolls all pods in ambient data plane
+    istio.io/dataplane-mode: ambient

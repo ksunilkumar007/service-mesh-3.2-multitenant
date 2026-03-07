@@ -1,0 +1,35 @@
+# =============================================================================
+# Namespace — istio-cni
+# =============================================================================
+# PURPOSE:
+#   Dedicated namespace for the Istio CNI DaemonSet pods.
+#   Must be created BEFORE applying istio-cni.yaml — the Sail Operator
+#   reconciler validates the namespace exists before deploying the DaemonSet.
+#
+# LABELS — why two separate label keys:
+#   YAML does not allow duplicate keys. mesh=tenant-a and mesh=tenant-b
+#   cannot both exist on the same label key — the second overwrites the first.
+#
+#   Solution: use separate label keys per tenant for control plane namespaces.
+#
+#   istio-discovery-a: enabled
+#     istiod-a discoverySelector matches this — sees istio-cni namespace
+#
+#   istio-discovery-b: enabled
+#     istiod-b discoverySelector matches this — sees istio-cni namespace
+#
+#   Without istio-discovery-a: istiod-a cannot see CNI → IstioCNINotFound
+#   Without istio-discovery-b: istiod-b cannot see CNI → IstioCNINotFound
+#
+# NOTE:
+#   Workload namespaces (bookinfo-a, bookinfo-b) use mesh=tenant-a/b
+#   because each is owned by exactly one tenant — no duplicate key problem.
+#   Only shared control plane namespaces (istio-cni) need this pattern.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-cni
+  labels:
+    istio-discovery-a: enabled
+    istio-discovery-b: enabled

@@ -1,0 +1,52 @@
+# =============================================================================
+# ReferenceGrant — allows bookinfo-ingress-b to use bookinfo-b Waypoint
+# =============================================================================
+# SOURCE:
+#   Patched from service-mesh-3.2/gateways/ingress/referencegrant.yaml
+#
+# FIELDS CHANGED FROM SNO:
+#   metadata.name:       bookinfo-ingress-waypoint → bookinfo-ingress-waypoint-b
+#   metadata.namespace:  bookinfo                  → bookinfo-b
+#   spec.from.namespace: bookinfo-ingress           → bookinfo-ingress-b
+#
+# WHY THIS IS NEEDED:
+#   The bookinfo-b Waypoint enforces L7 AuthorizationPolicy for traffic
+#   destined for bookinfo-b Services (productpage, reviews, etc).
+#   The ingress gateway pod lives in bookinfo-ingress-b namespace.
+#
+#   Without this ReferenceGrant:
+#     - gateway pod: WAYPOINT=None in ztunnel-config workloads
+#     - gateway traffic bypasses the bookinfo-b Waypoint
+#     - L7 AuthorizationPolicy on productpage is NOT enforced
+#       for external traffic entering via the gateway
+#
+#   With this ReferenceGrant:
+#     - bookinfo-ingress-b can reference bookinfo-b/waypoint
+#     - ztunnel routes gateway outbound traffic via the Waypoint
+#     - L7 AuthorizationPolicy IS enforced end-to-end
+#
+# PLACEMENT:
+#   Must be in the SAME namespace as the Waypoint (bookinfo-b).
+#   Grants FROM bookinfo-ingress-b permission to reference
+#   the waypoint Gateway in bookinfo-b.
+#
+# AFTER APPLYING — label bookinfo-ingress-b to use the waypoint:
+#   oc label namespace bookinfo-ingress-b \
+#     istio.io/use-waypoint=waypoint \
+#     istio.io/waypoint-namespace=bookinfo-b
+# =============================================================================
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: bookinfo-ingress-waypoint-b
+  # Must be in the same namespace as the Waypoint being referenced
+  namespace: bookinfo-b
+spec:
+  from:
+  - group: ""
+    kind: namespace
+    namespace: bookinfo-ingress-b
+  to:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: waypoint

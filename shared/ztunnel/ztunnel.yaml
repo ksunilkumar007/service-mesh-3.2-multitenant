@@ -1,0 +1,72 @@
+# =============================================================================
+# ZTunnel — data plane (shared CR, cluster-wide)
+# =============================================================================
+# SOURCE:
+#   Patched from service-mesh-3.2/mesh/ambient/ztunnel.yaml
+#
+# LESSONS LEARNED — see shared/ztunnel/README.md for full details
+#
+# CRITICAL FIELDS:
+#
+#   spec.version — REQUIRED for values block to persist.
+#     Without this, values: {} is stored silently.
+#
+#   values.ztunnel.xdsAddress — points ztunnel at istiod-tenant-a for xDS.
+#     Default would be istiod.istio-system.svc which doesn't exist.
+#     Sail Operator names the Service: istiod-<revision-name>
+#     Verify: oc get svc -n istio-system-a
+#
+#   values.ztunnel.caAddress — CRITICAL — points ztunnel at istiod-tenant-a
+#     for certificate signing (CA).
+#     Without this, ztunnel uses CA_ADDRESS=istiod.istio-system.svc:15012
+#     (the default) which does NOT exist in multi-tenant setup.
+#     Symptom: north-south 503, ztunnel logs show:
+#       "signing error: client error (Connect)"
+#     Fix: set caAddress to same address as xdsAddress.
+#
+#   values.ztunnel.tolerations — tolerate tenant node taints.
+#     ztunnel must run on ALL nodes that host mesh workloads.
+#     Without tolerations for tenant taints, ztunnel skips tainted nodes
+#     and pods there have no mTLS, no SPIFFE identity, no policy.
+#
+# NOTE ON nodeSelector:
+#   ztunnel has NO nodeSelector — it runs on ALL nodes as a true DaemonSet.
+#   Tenant isolation is via xdsAddress/caAddress pointing to the correct
+#   istiod, not via node restriction.
+#   When tenant-b is added, this CR must be updated with tenant-b istiod
+#   addresses — or a federation approach used.
+#
+# NOTE ON MULTI-TENANT LIMITATION:
+#   Only ONE ZTunnel CR per cluster (name: default — enforced).
+#   This CR currently points to istiod-tenant-a for both xDS and CA.
+#   When tenant-b is added, this needs redesign.
+#   See tenant-b/control-plane/README.md for the strategy.
+# =============================================================================
+apiVersion: sailoperator.io/v1
+kind: ZTunnel
+metadata:
+  name: default
+spec:
+  namespace: ztunnel
+  profile: ambient
+  version: v1.27.5
+  values:
+    ztunnel:
+      # xDS address — istiod for config distribution
+      # Sail Operator names Service: istiod-<Istio-CR-name>
+      xdsAddress: istiod-tenant-a.istio-system-a.svc:15012
+
+      # CA address — istiod for certificate signing
+      # MUST be set explicitly — default is istiod.istio-system.svc
+      # which does not exist in multi-tenant setup.
+      # Without this: ztunnel cannot sign HBONE connections → 503
+      caAddress: istiod-tenant-a.istio-system-a.svc:15012
+
+      # Tolerate tenant node taints so ztunnel runs on all nodes
+      tolerations:
+      - key: mesh
+        value: tenant-a
+        effect: NoSchedule
+      - key: mesh
+        value: tenant-b
+        effect: NoSchedule

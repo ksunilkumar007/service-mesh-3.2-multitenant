@@ -1,0 +1,53 @@
+# =============================================================================
+# AuthorizationPolicy — L7 access control for productpage via Waypoint
+# =============================================================================
+# SOURCE:
+#   Patched from service-mesh-3.2/mesh/ambient/authorizationpolicy.yaml
+#
+# FIELDS CHANGED FROM SNO:
+#   metadata.name:      productpage-waypoint  → productpage-waypoint-b
+#   metadata.namespace: bookinfo              → bookinfo-b
+#   targetRefs.name:    productpage           → productpage (unchanged)
+#   principals:         bookinfo-ingress/...  → bookinfo-ingress-b/...
+#                       bookinfo/sa/*         → bookinfo-b/sa/*
+#
+# SERVICE ACCOUNT NAMING — SAIL OPERATOR LESSON:
+#   Sail Operator appends "-istio" to the Gateway CR name for the SA.
+#   Gateway CR name: bookinfo-gateway-b
+#   Actual SA created: bookinfo-gateway-b-istio
+#
+#   Always verify with:
+#     oc get serviceaccount -n bookinfo-ingress-b
+#   before writing principals.
+#
+# SPIFFE identity:
+#   cluster.local/ns/bookinfo-ingress-b/sa/bookinfo-gateway-b-istio
+# =============================================================================
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: productpage-waypoint-b
+  namespace: bookinfo-b
+spec:
+  targetRefs:
+  - kind: Service
+    group: ""
+    name: productpage
+  action: ALLOW
+  rules:
+  # Rule 1 — Allow tenant-b ingress gateway (external traffic)
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/bookinfo-ingress-b/sa/bookinfo-gateway-b-istio
+    to:
+    - operation:
+        methods: ["GET"]
+  # Rule 2 — Allow internal bookinfo-b mesh traffic
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/bookinfo-b/sa/*
+    to:
+    - operation:
+        methods: ["GET"]

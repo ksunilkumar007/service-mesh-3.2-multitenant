@@ -1,0 +1,78 @@
+# =============================================================================
+# HTTPRoute — Routes external traffic to bookinfo-b productpage
+# =============================================================================
+# SOURCE:
+#   Patched from service-mesh-3.2/gateways/ingress/bookinfo-httproute.yaml
+#
+# FIELDS CHANGED FROM SNO:
+#   metadata.name:             bookinfo          → bookinfo-b
+#   metadata.namespace:        bookinfo          → bookinfo-b
+#   spec.parentRefs.name:      bookinfo-gateway  → bookinfo-gateway-b
+#   spec.parentRefs.namespace: bookinfo-ingress  → bookinfo-ingress-b
+#   spec.hostnames:            OCP Route host    → AWS NLB hostname
+#   backendRefs.namespace:     bookinfo          → bookinfo-b
+#
+# KEY DIFFERENCE FROM SNO — no OCP Route, no apps.* hostname:
+#
+#   SNO (platform: None):
+#     - Traffic: client → OCP Router → ClusterIP Gateway Service → Envoy
+#     - Hostname: bookinfo.apps.cluster-xxx.dynamic.redhatworkshops.io
+#     - OCP Route matches on hostname and forwards to gateway ClusterIP
+#     - HTTPRoute hostname must match the OCP Route hostname
+#
+#   AWS (platform: AWS):
+#     - Traffic: client → AWS NLB → LoadBalancer Gateway Service → Envoy
+#     - Hostname: <nlb-id>.elb.<region>.amazonaws.com
+#     - No OCP Route. No OCP Router involved at all.
+#     - HTTPRoute hostname must match the NLB DNS name
+#     - OR leave hostnames empty to match ALL hostnames (lab shortcut)
+#
+# HOSTNAME — FILL IN AFTER GATEWAY IS APPLIED:
+#   1. Apply bookinfo-gateway-b.yaml first
+#   2. Wait for NLB to be provisioned (2-3 min):
+#        oc get svc -n bookinfo-ingress-b
+#        # EXTERNAL-IP: <nlb-id>.elb.us-east-1.amazonaws.com
+#   3. Replace PLACEHOLDER below with the actual NLB hostname
+#   4. Re-apply this file
+#
+#   For the lab, hostnames can also be left empty ([]) to match all
+#   incoming requests — simpler but less secure for production.
+# =============================================================================
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: bookinfo-b
+  namespace: bookinfo-b
+spec:
+  parentRefs:
+  - name: bookinfo-gateway-b
+    namespace: bookinfo-ingress-b
+    kind: Gateway
+    group: gateway.networking.k8s.io
+
+  # FILL IN after NLB is provisioned:
+  #   oc get svc -n bookinfo-ingress-b -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'
+  # For lab convenience, leave empty ([]) to match all hostnames.
+  hostnames: []
+
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /productpage
+    - path:
+        type: PathPrefix
+        value: /static
+    - path:
+        type: Exact
+        value: /login
+    - path:
+        type: Exact
+        value: /logout
+    - path:
+        type: PathPrefix
+        value: /api/v1/products
+    backendRefs:
+    - name: productpage
+      port: 9080
+      namespace: bookinfo-b

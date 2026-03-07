@@ -1,0 +1,30 @@
+# =============================================================================
+# Namespace — istio-system-a
+# =============================================================================
+# PURPOSE:
+#   Dedicated control plane namespace for tenant-a istiod.
+#   Must be created BEFORE applying istiod-a.yaml.
+#
+# LABELS:
+#   istio-discovery-a: enabled
+#     istiod-a discoverySelector matches this label.
+#     istiod-a needs to see its own namespace on first boot to discover
+#     itself and its own services. Without this label, istiod-a cannot
+#     see itself and will fail to initialise correctly.
+#
+#   mesh=tenant-a is NOT used here — istio-system-a is a control plane
+#   namespace, not a workload namespace. It uses the istio-discovery-a
+#   label pattern to avoid conflicts with tenant-b namespaces.
+#
+# WHY SEPARATE FROM istio-system:
+#   Each tenant gets its own istiod with its own SPIFFE CA, xDS config,
+#   and policy distribution. Sharing istio-system would mean sharing the
+#   certificate authority — tenant-a certs could be validated by tenant-b
+#   istiod, breaking the trust boundary between tenants.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system-a
+  labels:
+    istio-discovery-a: enabled

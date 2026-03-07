@@ -1,0 +1,39 @@
+# =============================================================================
+# Gateway — Istio ingress gateway for tenant-a bookinfo
+# =============================================================================
+# SOURCE:
+#   Patched from service-mesh-3.2/gateways/ingress/bookinfo-gateway.yaml
+#
+# FIELDS CHANGED FROM SNO:
+#   metadata.name:      bookinfo-gateway  → bookinfo-gateway-a
+#   metadata.namespace: bookinfo-ingress  → bookinfo-ingress-a
+#
+# NODE PINNING via spec.infrastructure.parametersRef:
+#   Same approach as waypoint-a.yaml.
+#   Apply bookinfo-gateway-overrides-a.yaml BEFORE this file.
+#
+# AWS NOTE:
+#   No OCP Route needed. Gateway Service is type=LoadBalancer.
+#   AWS NLB provisioned automatically.
+# =============================================================================
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: bookinfo-gateway-a
+  namespace: bookinfo-ingress-a
+spec:
+  gatewayClassName: istio
+  infrastructure:
+    labels:
+      mesh: tenant-a
+    parametersRef:
+      group: ""
+      kind: ConfigMap
+      name: bookinfo-gateway-overrides
+  listeners:
+  - name: http
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: All

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bookinfo-gateway-overrides
+  namespace: bookinfo-ingress-b
+data:
+  # Using the "deployment" key ensures the controller injects these into the Pod template
+  deployment: |
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            mesh: tenant-b
+          tolerations:
+          - key: "mesh"
+            operator: "Equal"
+            value: "tenant-b"
+            effect: "NoSchedule"
+

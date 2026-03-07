@@ -1,0 +1,50 @@
+# =============================================================================
+# Namespace — bookinfo-ingress-a
+# =============================================================================
+# SOURCE:
+#   Patched from service-mesh-3.2/gateways/ingress/bookinfo-namespace.yaml
+#
+# FIELDS CHANGED FROM SNO:
+#   metadata.name:        bookinfo-ingress → bookinfo-ingress-a
+#   labels.istio-discovery: enabled → removed
+#   labels.mesh:          (none) → tenant-a  (NEW)
+#
+# PURPOSE:
+#   Dedicated namespace for the tenant-a Istio ingress gateway.
+#   Keeping the ingress gateway in its own namespace:
+#     - Isolates ingress traffic from the bookinfo-a application namespace
+#     - Makes the ingress gateway ServiceAccount identity explicit:
+#         spiffe://cluster.local/ns/bookinfo-ingress-a/sa/bookinfo-gateway-a-istio
+#     - This SPIFFE identity is used in AuthorizationPolicy to allow
+#       only the tenant-a ingress gateway to reach productpage
+#
+# LABELS:
+#   mesh=tenant-a
+#     Makes this namespace visible to istiod-a discoverySelectors.
+#     Without this, istiod-a cannot configure the Gateway pod via xDS.
+#     Replaces istio-discovery=enabled from SNO.
+#
+#   istio.io/dataplane-mode=ambient
+#     Enrolls the Gateway pod in ambient mode so ztunnel handles
+#     mTLS for its outbound traffic to bookinfo-a services.
+#     The Gateway pod itself gets istio.io/dataplane-mode=none
+#     (set by Sail Operator) — namespace label ensures ztunnel
+#     tracks it as a workload for identity purposes.
+#
+# AWS NOTE:
+#   On SNO (platform:None) the gateway Service was ClusterIP + OCP Route.
+#   On AWS the gateway Service is type=LoadBalancer — AWS NLB provisioned
+#   automatically. No OCP Route needed. No ClusterIP annotation needed.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bookinfo-ingress-a
+  labels:
+    # Makes this namespace visible to istiod-a discoverySelectors
+    mesh: tenant-a
+    istio.io/rev: tenant-a
+    # Prevent sidecar injection — ambient mode uses ztunnel not sidecars
+    istio-injection: disabled
+    # Enrolls Gateway pod in ambient data plane
+    istio.io/dataplane-mode: ambient

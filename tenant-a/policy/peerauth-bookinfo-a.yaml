@@ -1,0 +1,22 @@
+# =============================================================================
+# PeerAuthentication — Namespace-scoped mTLS policy for bookinfo-a
+# =============================================================================
+# SOURCE:
+#   Patched from service-mesh-3.2/mesh/ambient/peerauth-bookinfo.yaml
+#
+# FIELDS CHANGED FROM SNO:
+#   metadata.name:      bookinfo-strict   → bookinfo-strict-a
+#   metadata.namespace: bookinfo          → bookinfo-a
+#
+# PURPOSE:
+#   Defence-in-depth — bookinfo-a's mTLS posture is independent of the
+#   mesh-wide policy. If the mesh-wide policy changes, bookinfo-a stays STRICT.
+# =============================================================================
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: bookinfo-strict-a
+  namespace: bookinfo-a
+spec:
+  mtls:
+    mode: STRICT

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: waypoint-overrides
+  namespace: bookinfo-b
+data:
+  # The controller specifically looks for the "deployment" key
+  deployment: |
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            mesh: tenant-b
+          tolerations:
+          - key: "mesh"
+            operator: "Equal"
+            value: "tenant-b"
+            effect: "NoSchedule"

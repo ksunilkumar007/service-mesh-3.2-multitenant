@@ -1,0 +1,29 @@
+# =============================================================================
+# PeerAuthentication — Mesh-wide mTLS policy for tenant-a
+# =============================================================================
+# SOURCE:
+#   Patched from service-mesh-3.2/mesh/ambient/peerauth-meshwide.yaml
+#
+# FIELDS CHANGED FROM SNO:
+#   metadata.namespace: istio-system → istio-system-a
+#
+# WHY namespace=istio-system-a:
+#   The Istio convention is: PeerAuthentication named "default" in the
+#   rootNamespace = mesh-wide policy.
+#   In istio.yaml we set: rootNamespace: istio-system-a (via Sail Operator)
+#   So the mesh-wide policy for tenant-a must be in istio-system-a.
+#   A policy in istio-system would only apply to the default mesh.
+#
+# SCOPE:
+#   Applies to ALL namespaces watched by istiod-a (discoverySelectors).
+#   This includes: bookinfo-a, bookinfo-ingress-a, ztunnel, istio-cni.
+#   Does NOT affect tenant-b namespaces — they are not in istiod-a scope.
+# =============================================================================
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system-a
+spec:
+  mtls:
+    mode: STRICT

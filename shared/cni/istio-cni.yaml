@@ -1,0 +1,89 @@
+# =============================================================================
+# IstioCNI — Shared Istio CNI DaemonSet (cluster-wide)
+# =============================================================================
+# SOURCE:
+#   Copied from service-mesh-3.2/mesh/ambient/istio-cni.yaml
+#   YAML is identical — no fields changed for multi-tenant multi-node.
+#
+# PURPOSE:
+#   Deploys the Istio CNI plugin on every node in the cluster.
+#   The CNI plugin intercepts pod traffic and redirects it to the local
+#   ztunnel transparently at pod creation time — no init containers needed.
+#
+# WHY THIS IS IN shared/ AND NOT IN tenant-a/ OR tenant-b/:
+#   IstioCNI is a cluster-scoped DaemonSet. There can only be one IstioCNI
+#   CR named "default" per cluster. It runs on ALL nodes — tenant-a nodes,
+#   tenant-b nodes, and the infra node.
+#
+#   The CNI plugin does not make routing decisions — it only inserts
+#   iptables rules into pod network namespaces when a pod's namespace
+#   has the label: istio.io/dataplane-mode=ambient
+#
+#   Tenant isolation is NOT the CNI's responsibility.
+#   Tenant isolation is enforced by:
+#     - ztunnel nodeSelector (each ztunnel only runs on its own tenant nodes)
+#     - istiod discoverySelectors (each istiod only watches its own namespaces)
+#     - AuthorizationPolicy DENY cross-pool (policy enforcement at Waypoint)
+#
+# WHAT HAPPENS AT POD CREATION ON A TENANT-A NODE:
+#   1. kubelet calls the CNI plugin for the new pod
+#   2. CNI checks the pod's namespace for: istio.io/dataplane-mode=ambient
+#   3. If YES — inserts iptables rules redirecting traffic to ztunnel-a
+#               (ztunnel-a is the ztunnel running on that tenant-a node)
+#   4. If NO  — does nothing, pod gets normal cluster networking
+#
+#   Same logic applies on tenant-b nodes — traffic redirects to ztunnel-b.
+#   The CNI plugin itself has no knowledge of tenants.
+#
+# MULTI-NODE BEHAVIOUR vs SNO:
+#   SNO:        1 CNI pod — restarts affect all enrolled pods simultaneously
+#   Multi-node: 1 CNI pod per node — restarts are isolated per node
+#               A CNI restart on a tenant-a node does NOT affect tenant-b pods
+#               Each node recovers independently
+#
+# reconcileIptablesOnStartup: true
+#   Still critical on multi-node — same reasoning as SNO.
+#   When a CNI pod restarts on any node (reboot, upgrade, eviction),
+#   iptables rules in running pod network namespaces become stale.
+#   This flag re-inserts rules for all enrolled pods on that node at startup.
+#   Without it — enrolled pods on the restarted node lose traffic interception
+#   silently until each pod is individually restarted.
+#
+# DEPENDENCY:
+#   Apply AFTER operator/ is installed.
+#   Apply BEFORE any ztunnel CR (ztunnel-a or ztunnel-b).
+#   istiod-a and istiod-b will report IstioCNINotFound until this is Healthy.
+#
+# VERIFY AFTER APPLYING:
+#   # CR status
+#   oc get istiocni default
+#   # Expected: STATUS=Healthy
+#
+#   # One DaemonSet pod per node (5 workers + 3 masters = 8 pods)
+#   oc get pods -n istio-cni -o wide
+#   # Confirm pods are Running on ALL nodes including tenant-a, tenant-b, infra
+# =============================================================================
+apiVersion: sailoperator.io/v1
+kind: IstioCNI
+metadata:
+  name: default
+spec:
+  # Namespace where the CNI DaemonSet pods run.
+  # istio-cni namespace must exist and be labelled before istiod-a/b
+  # can discover it via their discoverySelectors.
+  namespace: istio-cni
+
+  # ambient profile — required for ambient mode.
+  # Do not change to "default" — that targets sidecar injection mode.
+  profile: ambient
+
+  values:
+    cni:
+      ambient:
+        # reconcileIptablesOnStartup: true
+        #
+        # Keep this enabled on multi-node — critical for node-level recovery.
+        # On CNI pod restart, re-inserts iptables rules for all enrolled pods
+        # on that node without requiring pod restarts.
+        # Especially important during node reboots and operator upgrades.
+        reconcileIptablesOnStartup: true

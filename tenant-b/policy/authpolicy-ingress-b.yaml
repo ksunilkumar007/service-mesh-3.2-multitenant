@@ -1,0 +1,30 @@
+# =============================================================================
+# AuthorizationPolicy — L7 access control for bookinfo-ingress-b Gateway
+# =============================================================================
+# SOURCE:
+#   Patched from service-mesh-3.2/gateways/ingress/authpolicy.yaml
+#
+# FIELDS CHANGED FROM SNO:
+#   metadata.name:           ingress-policy    → ingress-policy-b
+#   metadata.namespace:      bookinfo-ingress  → bookinfo-ingress-b
+#   targetRefs.name:         bookinfo-gateway  → bookinfo-gateway-b
+#
+# PURPOSE:
+#   Restricts traffic entering via the tenant-b ingress gateway to GET only.
+#   Enforced at the Gateway (north-south entry point).
+# =============================================================================
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: ingress-policy-b
+  namespace: bookinfo-ingress-b
+spec:
+  targetRefs:
+  - kind: Gateway
+    group: gateway.networking.k8s.io
+    name: bookinfo-gateway-b
+  action: ALLOW
+  rules:
+  - to:
+    - operation:
+        methods: ["GET"]
