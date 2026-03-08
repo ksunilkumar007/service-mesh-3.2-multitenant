@@ -1,0 +1,55 @@
+# =============================================================================
+# cluster-monitoring-config — enable user workload monitoring
+# =============================================================================
+# Enables the user workload monitoring stack which deploys a separate
+# Prometheus instance that scrapes metrics from user namespaces.
+#
+# Required for Kiali to show traffic graphs and metrics for bookinfo
+# workloads. Without this, Kiali can discover services but cannot
+# show request rates, error rates, or response times.
+#
+# APPLY: Once per cluster — no per-tenant changes needed.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    enableUserWorkload: true
+---
+# =============================================================================
+# user-workload-monitoring-config — configure user workload Prometheus
+# =============================================================================
+# Tolerations allow Prometheus replicas to spread across:
+#   - infra node (ip-10-0-57-92, no taint)
+#   - tenant-a nodes (mesh=tenant-a:NoSchedule)
+#
+# Without tolerations only 1 infra node is available → second replica
+# stays Pending due to anti-affinity rules.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-workload-monitoring-config
+  namespace: openshift-user-workload-monitoring
+data:
+  config.yaml: |
+    prometheus:
+      retention: 24h
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+      tolerations:
+      - key: mesh
+        operator: Equal
+        value: tenant-a
+        effect: NoSchedule
+    thanosRuler:
+      tolerations:
+      - key: mesh
+        operator: Equal
+        value: tenant-a
+        effect: NoSchedule

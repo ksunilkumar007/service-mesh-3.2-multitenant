@@ -1,0 +1,27 @@
+# =============================================================================
+# Telemetry CR — mesh-wide trace export to shared OTel collector
+# =============================================================================
+# SOURCE: service-mesh-3.2/distributed-tracing/otel/istio-telemetry.yaml
+#
+# CHANGES FROM SNO:
+#   namespace: istio-system (same — mesh-wide, applies to all tenants)
+#   extensionProvider name must match Istio CR meshConfig.extensionProviders
+#
+# NOTE: Requires extensionProvider in shared/control-plane/istio.yaml:
+#   meshConfig:
+#     extensionProviders:
+#     - name: otel-tracing
+#       opentelemetry:
+#         service: otel-collector.tracing.svc.cluster.local
+#         port: 4317
+# =============================================================================
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: mesh-tracing
+  namespace: istio-system
+spec:
+  tracing:
+  - providers:
+    - name: otel-tracing
+    randomSamplingPercentage: 100

@@ -1,0 +1,26 @@
+# =============================================================================
+# ObjectBucketClaim — NooBaa S3 bucket for shared Tempo trace storage
+# =============================================================================
+# SOURCE: service-mesh-3.2/distributed-tracing/tempo/tempo-bucket.yaml
+# CHANGES: none — shared bucket for all tenants
+#
+# After applying, create tempo-s3-secret:
+#   BUCKET_NAME=$(oc get cm tempo-bucket -n tracing -o jsonpath='{.data.BUCKET_NAME}')
+#   BUCKET_HOST=$(oc get cm tempo-bucket -n tracing -o jsonpath='{.data.BUCKET_HOST}')
+#   BUCKET_PORT=$(oc get cm tempo-bucket -n tracing -o jsonpath='{.data.BUCKET_PORT}')
+#   ACCESS_KEY=$(oc get secret tempo-bucket -n tracing -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
+#   SECRET_KEY=$(oc get secret tempo-bucket -n tracing -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
+#   oc create secret generic tempo-s3-secret -n tracing \
+#     --from-literal=bucket="${BUCKET_NAME}" \
+#     --from-literal=endpoint="https://${BUCKET_HOST}:${BUCKET_PORT}" \
+#     --from-literal=access_key_id="${ACCESS_KEY}" \
+#     --from-literal=access_key_secret="${SECRET_KEY}"
+# =============================================================================
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: tempo-bucket
+  namespace: tracing
+spec:
+  generateBucketName: tempo
+  storageClassName: openshift-storage.noobaa.io

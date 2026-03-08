@@ -1,0 +1,19 @@
+# =============================================================================
+# Telemetry — waypoint tracing for tenant-b
+# =============================================================================
+# See tenant-a/gateways/telemetry-a.yaml for full explanation.
+# =============================================================================
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: waypoint-tracing-b
+  namespace: bookinfo-ingress-b
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: bookinfo-ingress-b
+  tracing:
+  - providers:
+    - name: otel-tracing
+    randomSamplingPercentage: 100

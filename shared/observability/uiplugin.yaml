@@ -1,0 +1,14 @@
+# =============================================================================
+# UIPlugin — OCP distributed tracing UI plugin
+# =============================================================================
+# SOURCE: service-mesh-3.2/distributed-tracing/tempo/uiplugin.yaml
+# CHANGES: none — shared plugin for all tenants
+# =============================================================================
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  name: distributed-tracing
+spec:
+  type: DistributedTracing
+  distributedTracing:
+    timeout: 30s

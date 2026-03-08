@@ -1,0 +1,27 @@
+# =============================================================================
+# Telemetry — waypoint tracing for tenant-a
+# =============================================================================
+# LESSON LEARNED:
+#   In Istio 1.27.5 ambient mode, the mesh-wide Telemetry CR in istio-system
+#   does NOT activate tracing on waypoint proxies.
+#   A Telemetry CR with targetRef pointing to the Gateway CR is required.
+#
+# targetRef:
+#   Targets the bookinfo-ingress-a Gateway CR specifically.
+#   This injects the OTel tracing filter into the waypoint's HTTP
+#   connection manager listener on port 80.
+# =============================================================================
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: waypoint-tracing-a
+  namespace: bookinfo-ingress-a
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: bookinfo-ingress-a
+  tracing:
+  - providers:
+    - name: otel-tracing
+    randomSamplingPercentage: 100

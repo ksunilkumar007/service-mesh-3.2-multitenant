@@ -1,0 +1,68 @@
+# =============================================================================
+# TempoStack — shared distributed tracing backend for all tenants
+# =============================================================================
+# SOURCE: service-mesh-3.2/distributed-tracing/tempo/tempostack.yaml
+#
+# CHANGES FROM SNO:
+#   Added two tenants: tenant-a and tenant-b (instead of single dev tenant)
+#   Each tenant gets its own tenantId UUID and isolated trace storage.
+#
+# MULTI-TENANT TRACE ISOLATION:
+#   Tempo gateway enforces per-tenant auth via OCP SubjectAccessReview.
+#   A user/SA can only query tenants they have RBAC access to.
+#   OTel collector routes traces to the correct tenant via X-Scope-OrgID header.
+#
+# TENANT IDs:
+#   Must be unique UUIDs — do not reuse across deployments.
+#   tenant-a: b1a2c3d4-e5f6-7890-abcd-ef1234567890
+#   tenant-b: c2b3d4e5-f6a7-8901-bcde-f01234567891
+#
+# VERIFY:
+#   oc get tempostack tempo -n tracing
+#   oc get pods -n tracing | grep tempo
+# =============================================================================
+apiVersion: tempo.grafana.com/v1alpha1
+kind: TempoStack
+metadata:
+  name: tempo
+  namespace: tracing
+spec:
+  storage:
+    secret:
+      name: tempo-s3-secret
+      type: s3
+    tls:
+      enabled: true
+      caName: openshift-service-ca.crt
+  storageSize: 10Gi
+  resources:
+    total:
+      limits:
+        memory: 2Gi
+        cpu: 2000m
+  retention:
+    global:
+      traces: 24h
+  replicationFactor: 1
+  template:
+    gateway:
+      enabled: true
+    distributor:
+      replicas: 1
+    ingester:
+      replicas: 1
+    compactor:
+      replicas: 1
+    querier:
+      replicas: 1
+    queryFrontend:
+      replicas: 1
+      jaegerQuery:
+        enabled: true
+  tenants:
+    mode: openshift
+    authentication:
+    - tenantName: tenant-a
+      tenantId: "b1a2c3d4-e5f6-7890-abcd-ef1234567890"
+    - tenantName: tenant-b
+      tenantId: "c2b3d4e5-f6a7-8901-bcde-f01234567891"

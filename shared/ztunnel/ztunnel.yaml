@@ -54,13 +54,13 @@ spec:
     ztunnel:
       # xDS address — istiod for config distribution
       # Sail Operator names Service: istiod-<Istio-CR-name>
-      xdsAddress: istiod-tenant-a.istio-system-a.svc:15012
+      #xdsAddress: istiod-tenant-a.istio-system-a.svc:15012
 
       # CA address — istiod for certificate signing
       # MUST be set explicitly — default is istiod.istio-system.svc
       # which does not exist in multi-tenant setup.
       # Without this: ztunnel cannot sign HBONE connections → 503
-      caAddress: istiod-tenant-a.istio-system-a.svc:15012
+      #caAddress: istiod-tenant-a.istio-system-a.svc:15012
 
       # Tolerate tenant node taints so ztunnel runs on all nodes
       tolerations:

@@ -1,38 +1,34 @@
 # =============================================================================
-# Namespace — bookinfo-a
+# Namespace — bookinfo-a (tenant-a workload namespace)
 # =============================================================================
-# SOURCE:
-#   New file — no direct SNO equivalent.
-#   SNO used "bookinfo" created via oc new-project + oc label commands.
-#   Here the namespace is declarative YAML from the start.
-#
 # LABELS:
 #   mesh=tenant-a
-#     Matches istiod-a discoverySelector (Category 2 — workload namespaces).
-#     Without this, istiod-a cannot see bookinfo-a Services or Endpoints.
-#     bookinfo-a pods would have no xDS config pushed to ztunnel.
+#     Matches discoverySelector in shared istiod (Category 2).
+#     istiod watches this namespace for Services and Endpoints.
+#
+#   istio-discovery=enabled
+#     REQUIRED for tracing: Telemetry CR defaultProviders only pushes
+#     tracing config to namespaces matching all discoverySelectors.
+#     Added after lesson learned — missing label caused OTel spans to
+#     not be sent from waypoint proxies.
 #
 #   istio.io/dataplane-mode=ambient
-#     Enrolls all pods in this namespace in ambient mode.
-#     CNI plugin detects this label at pod creation and inserts
-#     iptables rules redirecting traffic to ztunnel on port 15008.
-#     Pods stay 1/1 — no sidecars injected.
+#     Enrolls all pods in ambient mode via ztunnel (no sidecars).
 #
-# WHY NOT istio-discovery=enabled (SNO label):
-#   SNO used a single discoverySelector: istio-discovery=enabled
-#   for ALL namespaces. On multi-tenant, workload namespaces use
-#   mesh=tenant-a so istiod-a can distinguish its own workloads
-#   from tenant-b workloads. istiod-b will never see this namespace.
+#   istio.io/use-waypoint=waypoint
+#     All L7 traffic from this namespace goes through the waypoint proxy.
+#     Required for AuthorizationPolicy enforcement at L7.
+#
+# NOTE: istio.io/rev removed — was for per-tenant istiod (old design).
+#   Single shared istiod uses revision=default, no rev label needed.
 # =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
   name: bookinfo-a
   labels:
-    # Makes this namespace visible to istiod-a discoverySelectors
     mesh: tenant-a
-    istio.io/rev: tenant-a
-    # Prevent sidecar injection — ambient mode uses ztunnel not sidecars
+    istio-discovery: enabled
     istio-injection: disabled
-    # Enrolls all pods in ambient data plane
     istio.io/dataplane-mode: ambient
+    istio.io/use-waypoint: waypoint

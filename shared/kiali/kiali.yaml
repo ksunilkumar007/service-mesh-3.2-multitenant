@@ -1,0 +1,69 @@
+# =============================================================================
+# Kiali — shared service mesh observability for all tenants
+# =============================================================================
+# SOURCE: service-mesh-3.2/kiali/kiali.yaml
+#
+# CHANGES FROM SNO:
+#   accessible_namespaces: added bookinfo-a, bookinfo-ingress-a,
+#                          bookinfo-b, bookinfo-ingress-b, tracing
+#   tracing: two Tempo tenants via separate in_cluster_url per tenant
+#   root_namespace: istio-system (same)
+#
+# ADDING A NEW TENANT:
+#   1. Add namespaces to accessible_namespaces
+#   2. Add RoleBindings in kiali-rbac.yaml
+#   No other changes needed.
+#
+# MULTI-TENANT TRACING IN KIALI:
+#   Kiali connects to Tempo gateway for each tenant separately.
+#   Users see traces filtered to their accessible namespaces only.
+#   Tempo RBAC enforces which OCP users can query which tenant.
+#
+# NOTE: extensionProvider in Istio CR must match provider name "otel-tracing"
+#   See shared/control-plane/istio.yaml for meshConfig.extensionProviders.
+# =============================================================================
+apiVersion: kiali.io/v1alpha1
+kind: Kiali
+metadata:
+  name: kiali
+  namespace: istio-system
+spec:
+  auth:
+    strategy: openshift
+  deployment:
+    accessible_namespaces:
+    - bookinfo-a
+    - bookinfo-ingress-a
+    - bookinfo-b
+    - bookinfo-ingress-b
+    - tracing
+  external_services:
+    istio:
+      root_namespace: istio-system
+    tracing:
+      enabled: true
+      provider: tempo
+      use_grpc: false
+      in_cluster_url: https://tempo-tempo-gateway.tracing:8080/api/traces/v1/tenant-a/tempo
+      disable_version_check: true
+      auth:
+        type: bearer
+        use_kiali_token: true
+        insecure_skip_verify: true
+      tempo_config:
+        url_format: openshift
+        org_id: tenant-a
+        cache_enabled: true
+        cache_capacity: 200
+      query_timeout: 30
+    prometheus:
+      url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
+      disable_version_check: true
+      auth:
+        type: bearer
+        use_kiali_token: true
+        insecure_skip_verify: false
+      thanos_proxy:
+        enabled: true
+    grafana:
+      enabled: false

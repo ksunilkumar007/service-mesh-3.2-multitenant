@@ -1,39 +1,20 @@
-# =============================================================================
-# Gateway — Istio ingress gateway for tenant-b bookinfo
-# =============================================================================
-# SOURCE:
-#   Patched from service-mesh-3.2/gateways/ingress/bookinfo-gateway.yaml
-#
-# FIELDS CHANGED FROM SNO:
-#   metadata.name:      bookinfo-gateway  → bookinfo-gateway-b
-#   metadata.namespace: bookinfo-ingress  → bookinfo-ingress-b
-#
-# NODE PINNING via spec.infrastructure.parametersRef:
-#   Same approach as waypoint-b.yaml.
-#   Apply bookinfo-gateway-overrides-b.yaml BEFORE this file.
-#
-# AWS NOTE:
-#   No OCP Route needed. Gateway Service is type=LoadBalancer.
-#   AWS NLB provisioned automatically.
-# =============================================================================
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: bookinfo-gateway-b
-  namespace: bookinfo-ingress-b
+  labels:
+    istio.io/waypoint-for: service
+  name: waypoint
+  namespace: bookinfo-b
 spec:
-  gatewayClassName: istio
+  gatewayClassName: istio-waypoint
   infrastructure:
     labels:
       mesh: tenant-b
     parametersRef:
       group: ""
       kind: ConfigMap
-      name: bookinfo-gateway-overrides
+      name: waypoint-overrides
   listeners:
-  - name: http
-    port: 80
-    protocol: HTTP
-    allowedRoutes:
-      namespaces:
-        from: All
+  - name: mesh
+    port: 15008
+    protocol: HBONE

@@ -1,20 +1,3 @@
-# =============================================================================
-# Gateway — Istio ingress gateway for tenant-b bookinfo
-# =============================================================================
-# SOURCE:
-#   Patched from service-mesh-3.2/gateways/ingress/bookinfo-gateway.yaml
-#
-# FIELDS CHANGED FROM SNO:
-#   metadata.name:      bookinfo-gateway  → bookinfo-gateway-a
-#   metadata.namespace: bookinfo-ingress  → bookinfo-ingress-a
-#
-# NODE PINNING via scheduling.istio.io annotations (Istio 1.24+):
-#   Same approach as waypoint-a.yaml — see above for explanation.
-#
-# AWS NOTE:
-#   No OCP Route needed. Gateway Service is type=LoadBalancer.
-#   AWS NLB provisioned automatically.
-# =============================================================================
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -25,7 +8,6 @@ spec:
   infrastructure:
     labels:
       mesh: tenant-b
-    # This is the "hook" that actually applies the nodeSelector
     parametersRef:
       group: ""
       kind: ConfigMap

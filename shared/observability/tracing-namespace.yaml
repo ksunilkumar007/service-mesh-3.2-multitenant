@@ -1,16 +1,16 @@
 # =============================================================================
-# Namespace — bookinfo-b (tenant-b workload namespace)
+# Namespace — tracing (shared observability namespace)
 # =============================================================================
-# Mirror of bookinfo-a.yaml with tenant-b labels.
-# See bookinfo-a.yaml for full label documentation.
+# Hosts TempoStack and OTelCollector for ALL tenants.
+# Single namespace scales to N tenants — no new infra per tenant.
+#
+# istio-discovery=enabled — istiod watches this namespace
+# dataplane-mode=ambient  — ztunnel enrolls Tempo + OTEL pods
 # =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: bookinfo-b
+  name: tracing
   labels:
-    mesh: tenant-b
     istio-discovery: enabled
     istio-injection: disabled
-    istio.io/dataplane-mode: ambient
-    istio.io/use-waypoint: waypoint

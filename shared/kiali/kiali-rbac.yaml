@@ -1,0 +1,107 @@
+# =============================================================================
+# RBAC — Kiali shared instance multi-tenant access
+# =============================================================================
+# SOURCE: service-mesh-3.2/kiali/kiali-rbac.yaml
+#
+# CHANGES FROM SNO:
+#   Added RoleBindings for both tenant namespaces.
+#   Kiali SA in istio-system needs view access to all tenant namespaces
+#   to discover services, workloads, and traffic metrics.
+#
+# TENANT ISOLATION IN KIALI:
+#   Kiali uses OCP OAuth — users log in with their OCP credentials.
+#   Add namespace-scoped RoleBindings to restrict OCP users to their
+#   own tenant namespaces. Kiali will only show namespaces the logged-in
+#   user has access to.
+#
+# ADDING A NEW TENANT:
+#   Add two RoleBindings: one for the workload ns, one for ingress ns.
+#   No changes to Kiali CR needed.
+# =============================================================================
+
+# Kiali SA — cluster monitoring access (Prometheus)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kiali-monitoring-rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-monitoring-view
+subjects:
+- kind: ServiceAccount
+  name: kiali-service-account
+  namespace: istio-system
+---
+# Kiali SA — view access to tenant-a namespaces
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kiali-view-bookinfo-a
+  namespace: bookinfo-a
+subjects:
+- kind: ServiceAccount
+  name: kiali-service-account
+  namespace: istio-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kiali-view-bookinfo-ingress-a
+  namespace: bookinfo-ingress-a
+subjects:
+- kind: ServiceAccount
+  name: kiali-service-account
+  namespace: istio-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+---
+# Kiali SA — view access to tenant-b namespaces
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kiali-view-bookinfo-b
+  namespace: bookinfo-b
+subjects:
+- kind: ServiceAccount
+  name: kiali-service-account
+  namespace: istio-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kiali-view-bookinfo-ingress-b
+  namespace: bookinfo-ingress-b
+subjects:
+- kind: ServiceAccount
+  name: kiali-service-account
+  namespace: istio-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+---
+# Kiali SA — view access to tracing namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kiali-view-tracing
+  namespace: tracing
+subjects:
+- kind: ServiceAccount
+  name: kiali-service-account
+  namespace: istio-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view

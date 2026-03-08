@@ -1,0 +1,49 @@
+# =============================================================================
+# Istio — Shared Control Plane (single istiod for all tenants)
+# =============================================================================
+# ARCHITECTURE DECISION:
+#   True multi-ambient-mesh is NOT supported in Istio 1.27.5.
+#   One ztunnel DaemonSet per cluster = one ambient mesh per cluster.
+#   Tenant isolation via node pools + waypoints + AuthorizationPolicy.
+#
+# discoverySelectors watches:
+#   1. istio-discovery=enabled  → istio-system, ztunnel, istio-cni, tracing
+#   2. mesh=tenant-a            → bookinfo-a, bookinfo-ingress-a
+#   3. mesh=tenant-b            → bookinfo-b, bookinfo-ingress-b
+#
+# extensionProviders:
+#   otel-tracing → shared OTel collector in tracing namespace
+#   Referenced by Telemetry CR in shared/observability/istio-telemetry.yaml
+#
+# defaultProviders.tracing:
+#   REQUIRED for ambient waypoints to honour Telemetry CR tracing config.
+#   Without this, waypoints ignore the Telemetry resource for tracing signal.
+#   Lesson learned: metrics default provider is set automatically by the
+#   ambient profile but tracing is NOT — must be explicit.
+# =============================================================================
+apiVersion: sailoperator.io/v1
+kind: Istio
+metadata:
+  name: default
+spec:
+  namespace: istio-system
+  profile: ambient
+  values:
+    pilot:
+      trustedZtunnelNamespace: ztunnel
+    meshConfig:
+      extensionProviders:
+      - name: otel-tracing
+        opentelemetry:
+          service: otel-collector.tracing.svc.cluster.local
+          port: 4317
+      defaultProviders:
+        tracing:
+        - otel-tracing
+      discoverySelectors:
+      - matchLabels:
+          istio-discovery: enabled
+      - matchLabels:
+          mesh: tenant-a
+      - matchLabels:
+          mesh: tenant-b

@@ -1,0 +1,17 @@
+# =============================================================================
+# Namespace — istio-system (shared control plane)
+# =============================================================================
+# Hosts the single istiod instance for the entire cluster.
+# Both tenant-a and tenant-b workloads are served by this istiod.
+#
+# Labels:
+#   istio-discovery=enabled — istiod's own discoverySelector so it can
+#   see itself on first boot (same pattern as SNO single-tenant setup).
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+  labels:
+    istio-discovery: enabled
+    istio-injection: disabled

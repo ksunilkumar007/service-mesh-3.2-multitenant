@@ -1,0 +1,97 @@
+# =============================================================================
+# OpenTelemetryCollector — shared collector, routes traces per tenant
+# =============================================================================
+# SOURCE: service-mesh-3.2/distributed-tracing/otel/collector.yaml
+#
+# CHANGES FROM SNO:
+#   Two pipelines: traces/tenant-a and traces/tenant-b
+#   Each pipeline uses a filter processor to keep only spans from
+#   its own tenant namespaces, then exports with the correct OrgID.
+#
+# NOTE ON routing processor:
+#   The routing processor was removed in otelcol v0.144.0.
+#   Use filter processor per pipeline instead.
+#
+# TENANT ROUTING LOGIC:
+#   traces/tenant-a: keeps spans where k8s.namespace.name IN
+#                    [bookinfo-a, bookinfo-ingress-a]
+#                    exports with X-Scope-OrgID: tenant-a
+#   traces/tenant-b: keeps spans where k8s.namespace.name IN
+#                    [bookinfo-b, bookinfo-ingress-b]
+#                    exports with X-Scope-OrgID: tenant-b
+#
+# DATA FLOW:
+#   Istio Waypoints (all tenants)
+#     → OTLP gRPC → otel-collector:4317
+#     → filter (by namespace) → batch
+#     → otlp/tenant-a → tempo-gateway:8090 (X-Scope-OrgID: tenant-a)
+#     → otlp/tenant-b → tempo-gateway:8090 (X-Scope-OrgID: tenant-b)
+# =============================================================================
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel
+  namespace: tracing
+spec:
+  mode: deployment
+  config:
+    extensions:
+      bearertokenauth:
+        filename: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      batch:
+        timeout: 5s
+        send_batch_size: 1000
+      filter/tenant-a:
+        error_mode: ignore
+        traces:
+          span:
+          - resource.attributes["k8s.namespace.name"] != "bookinfo-a" and
+            resource.attributes["k8s.namespace.name"] != "bookinfo-ingress-a"
+      filter/tenant-b:
+        error_mode: ignore
+        traces:
+          span:
+          - resource.attributes["k8s.namespace.name"] != "bookinfo-b" and
+            resource.attributes["k8s.namespace.name"] != "bookinfo-ingress-b"
+
+    exporters:
+      otlp/tenant-a:
+        endpoint: tempo-tempo-gateway.tracing.svc.cluster.local:8090
+        tls:
+          insecure: false
+          insecure_skip_verify: true
+        auth:
+          authenticator: bearertokenauth
+        headers:
+          X-Scope-OrgID: tenant-a
+      otlp/tenant-b:
+        endpoint: tempo-tempo-gateway.tracing.svc.cluster.local:8090
+        tls:
+          insecure: false
+          insecure_skip_verify: true
+        auth:
+          authenticator: bearertokenauth
+        headers:
+          X-Scope-OrgID: tenant-b
+
+    service:
+      extensions: [bearertokenauth]
+      pipelines:
+        traces/tenant-a:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlp/tenant-a]
+        traces/tenant-b:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlp/tenant-b]

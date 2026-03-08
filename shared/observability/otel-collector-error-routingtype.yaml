@@ -1,0 +1,93 @@
+# =============================================================================
+# OpenTelemetryCollector — shared collector, routes traces per tenant
+# =============================================================================
+# SOURCE: service-mesh-3.2/distributed-tracing/otel/collector.yaml
+#
+# CHANGES FROM SNO:
+#   Two exporters: otlp/tenant-a and otlp/tenant-b
+#   Two pipelines: one per tenant, filtered by namespace attribute
+#   Routing processor: routes spans to correct tenant based on
+#     resource attribute "k8s.namespace.name"
+#
+# TENANT ROUTING LOGIC:
+#   bookinfo-a, bookinfo-ingress-a → X-Scope-OrgID: tenant-a → Tempo tenant-a
+#   bookinfo-b, bookinfo-ingress-b → X-Scope-OrgID: tenant-b → Tempo tenant-b
+#   All other namespaces → dropped (no pipeline)
+#
+# DATA FLOW:
+#   Istio Waypoints (all tenants)
+#     → OTLP gRPC → otel-collector:4317
+#     → routing processor (by k8s.namespace.name)
+#     → otlp/tenant-a → tempo-gateway:8090 (X-Scope-OrgID: tenant-a)
+#     → otlp/tenant-b → tempo-gateway:8090 (X-Scope-OrgID: tenant-b)
+# =============================================================================
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel
+  namespace: tracing
+spec:
+  mode: deployment
+  config:
+    extensions:
+      bearertokenauth:
+        filename: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      batch:
+        timeout: 5s
+        send_batch_size: 1000
+      routing:
+        default_exporters: []
+        error_mode: ignore
+        attribute_source: resource
+        from_attribute: k8s.namespace.name
+        table:
+        - value: bookinfo-a
+          exporters: [otlp/tenant-a]
+        - value: bookinfo-ingress-a
+          exporters: [otlp/tenant-a]
+        - value: bookinfo-b
+          exporters: [otlp/tenant-b]
+        - value: bookinfo-ingress-b
+          exporters: [otlp/tenant-b]
+
+    exporters:
+      otlp/tenant-a:
+        endpoint: tempo-tempo-gateway.tracing.svc.cluster.local:8090
+        tls:
+          insecure: false
+          insecure_skip_verify: true
+        auth:
+          authenticator: bearertokenauth
+        headers:
+          X-Scope-OrgID: tenant-a
+      otlp/tenant-b:
+        endpoint: tempo-tempo-gateway.tracing.svc.cluster.local:8090
+        tls:
+          insecure: false
+          insecure_skip_verify: true
+        auth:
+          authenticator: bearertokenauth
+        headers:
+          X-Scope-OrgID: tenant-b
+
+    service:
+      extensions: [bearertokenauth]
+      pipelines:
+        traces/tenant-a:
+          receivers: [otlp]
+          processors: [batch, routing]
+          exporters: [otlp/tenant-a]
+        traces/tenant-b:
+          receivers: [otlp]
+          processors: [batch, routing]
+          exporters: [otlp/tenant-b]
