@@ -1,0 +1,38 @@
+# =============================================================================
+# ztunnel metrics Service + ServiceMonitor
+# =============================================================================
+# SOURCE: service-mesh-3.2/observability/monitors/ztunnel-monitor.yaml
+# CHANGES: none — single shared ztunnel DaemonSet, same as SNO
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: ztunnel
+  namespace: ztunnel
+  labels:
+    app: ztunnel
+    service: ztunnel
+spec:
+  selector:
+    app: ztunnel
+  ports:
+  - name: http-monitoring
+    port: 15020
+    targetPort: 15020
+    protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ztunnel-monitor
+  namespace: ztunnel
+spec:
+  targetLabels:
+  - app
+  selector:
+    matchLabels:
+      service: ztunnel
+  endpoints:
+  - port: http-monitoring
+    interval: 30s
+    path: /metrics

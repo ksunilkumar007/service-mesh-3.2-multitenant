@@ -32,3 +32,4 @@ metadata:
     istio-injection: disabled
     istio.io/dataplane-mode: ambient
     istio.io/use-waypoint: waypoint
+    openshift.io/user-monitoring: "true"  

@@ -38,6 +38,8 @@ spec:
           service: otel-collector.tracing.svc.cluster.local
           port: 4317
       defaultProviders:
+        metrics:
+        - prometheus
         tracing:
         - otel-tracing
       discoverySelectors:

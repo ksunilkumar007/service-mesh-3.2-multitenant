@@ -1,14 +1,18 @@
 # =============================================================================
 # cluster-monitoring-config — enable user workload monitoring
 # =============================================================================
-# Enables the user workload monitoring stack which deploys a separate
-# Prometheus instance that scrapes metrics from user namespaces.
+# enableUserWorkload: true — deploys prometheus-user-workload stack
 #
-# Required for Kiali to show traffic graphs and metrics for bookinfo
-# workloads. Without this, Kiali can discover services but cannot
-# show request rates, error rates, or response times.
+# thanosQuerier tolerations:
+#   operator: Exists — tolerates ALL taints (tenant-a, tenant-b, master).
+#   Required on this cluster because only 1 infra node has no taints.
+#   Anti-affinity requires 2 schedulable nodes for HA replicas.
 #
-# APPLY: Once per cluster — no per-tenant changes needed.
+# LESSON LEARNED:
+#   Without thanosQuerier config, OCP console Observe → Targets shows
+#   "User: 0" even when prometheus-user-workload is scraping correctly.
+#   Thanos Querier must federate user-workload metrics for console to
+#   display them.
 # =============================================================================
 apiVersion: v1
 kind: ConfigMap
@@ -18,16 +22,13 @@ metadata:
 data:
   config.yaml: |
     enableUserWorkload: true
+    thanosQuerier:
+      enableRequestLogging: false
+      tolerations:
+      - operator: Exists
 ---
 # =============================================================================
-# user-workload-monitoring-config — configure user workload Prometheus
-# =============================================================================
-# Tolerations allow Prometheus replicas to spread across:
-#   - infra node (ip-10-0-57-92, no taint)
-#   - tenant-a nodes (mesh=tenant-a:NoSchedule)
-#
-# Without tolerations only 1 infra node is available → second replica
-# stays Pending due to anti-affinity rules.
+# user-workload-monitoring-config — prometheus tolerations
 # =============================================================================
 apiVersion: v1
 kind: ConfigMap

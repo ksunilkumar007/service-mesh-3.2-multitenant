@@ -16,3 +16,4 @@ metadata:
     istio-discovery: enabled
     istio-injection: disabled
     istio.io/dataplane-mode: ambient
+    openshift.io/user-monitoring: "true"  

@@ -1,0 +1,73 @@
+# =============================================================================
+# Prometheus RBAC — grant user-workload Prometheus scrape access
+# =============================================================================
+# REQUIRED ON: multi-node OCP (AWS, baremetal, ROSA)
+# NOT NEEDED ON: SNO — single node has broader default Prometheus access
+#
+# prometheus-user-workload SA needs RoleBinding in each namespace it scrapes.
+# Without this, ServiceMonitors and PodMonitors are silently ignored and
+# no metrics appear in Observe → Metrics or Kiali traffic graph.
+#
+# ADDING A NEW TENANT:
+#   Add two RoleBindings: one for bookinfo-X, one for bookinfo-ingress-X.
+# =============================================================================
+
+# istio-system — istiod metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-user-workload
+  namespace: istio-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-k8s
+subjects:
+- kind: ServiceAccount
+  name: prometheus-user-workload
+  namespace: openshift-user-workload-monitoring
+---
+# ztunnel — ztunnel metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-user-workload
+  namespace: ztunnel
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-k8s
+subjects:
+- kind: ServiceAccount
+  name: prometheus-user-workload
+  namespace: openshift-user-workload-monitoring
+---
+# bookinfo-a — waypoint metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-user-workload
+  namespace: bookinfo-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-k8s
+subjects:
+- kind: ServiceAccount
+  name: prometheus-user-workload
+  namespace: openshift-user-workload-monitoring
+---
+# bookinfo-b — waypoint metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-user-workload
+  namespace: bookinfo-b
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-k8s
+subjects:
+- kind: ServiceAccount
+  name: prometheus-user-workload
+  namespace: openshift-user-workload-monitoring
