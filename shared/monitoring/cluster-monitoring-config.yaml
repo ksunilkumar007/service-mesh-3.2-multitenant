@@ -22,10 +22,13 @@ metadata:
 data:
   config.yaml: |
     enableUserWorkload: true
-    thanosQuerier:
+    thanosQuerier: # <--- Add this section as thanos querier pods are in Pending due to nodes taint
       enableRequestLogging: false
       tolerations:
       - operator: Exists
+    metricsServer: # <--- Add this section as metrics server pods are in Pending due to nodes taint
+      tolerations:
+      - operator: Exists     
 ---
 # =============================================================================
 # user-workload-monitoring-config — prometheus tolerations
