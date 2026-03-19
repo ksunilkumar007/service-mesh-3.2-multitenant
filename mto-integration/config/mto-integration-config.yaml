@@ -1,0 +1,66 @@
+# =============================================================================
+# IntegrationConfig — tenant-operator-config
+#
+# MTO v1beta1 schema (MTO v1.6.1 / tenant-operator.v1.6.1)
+#
+# CRITICAL: Apply this BEFORE any shared namespace creation.
+# The moment MTO's webhook goes live it blocks all namespace
+# creates that don't carry stakater.com/tenant — this config
+# exempts all platform/infra namespaces from that check.
+# =============================================================================
+apiVersion: tenantoperator.stakater.com/v1beta1
+kind: IntegrationConfig
+metadata:
+  name: tenant-operator-config
+  namespace: multi-tenant-operator
+spec:
+  accessControl:
+    # ── Privileged namespaces — MTO will NOT manage these ──────────────────
+    # Values are regex patterns. MTO webhook allows create/update/delete
+    # on these namespaces without requiring stakater.com/tenant label.
+    privileged:
+      namespaces:
+        # Istio ambient control plane
+        - ^istio-system$
+        - ^istio-cni$
+        - ^ztunnel$
+        # Observability stack
+        - ^opentelemetry-operator-system$
+        - ^tracing$
+        - ^monitoring$
+        # MTO itself
+        - ^multi-tenant-operator$
+        # OpenShift platform namespaces (all openshift-* prefixed)
+        - ^openshift-.*
+        # Kubernetes system namespaces
+        - ^kube-.*
+        - ^default$
+        # MetalLB load balancer
+        - ^metallb-system$
+
+      # ── Privileged ServiceAccounts — not blocked by MTO NetworkPolicy ───
+      # ztunnel and istiod need cluster-wide reach across tenant namespaces
+      serviceAccounts:
+        - ^system:serviceaccount:istio-system:.*
+        - ^system:serviceaccount:istio-cni:.*
+        - ^system:serviceaccount:ztunnel:.*
+        - ^system:serviceaccount:tracing:.*
+        - ^system:serviceaccount:monitoring:.*
+        - ^system:serviceaccount:openshift-.*
+        - ^system:serviceaccount:kube-.*
+        - ^system:serviceaccount:openshift-infra:.*
+        - ^system:serviceaccount:metallb-system:.*
+
+    # ── RBAC — default tenant roles ────────────────────────────────────────
+    rbac:
+      tenantRoles:
+        default:
+          owner:
+            clusterRoles:
+              - admin
+          editor:
+            clusterRoles:
+              - edit
+          viewer:
+            clusterRoles:
+              - view

@@ -48,7 +48,6 @@ metadata:
   name: default
 spec:
   namespace: ztunnel
-  profile: ambient
   version: v1.27.5
   values:
     ztunnel:

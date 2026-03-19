@@ -7,16 +7,16 @@
 
 set -e
 
-NODE1="ip-10-0-19-203.ec2.internal"
-NODE2="ip-10-0-47-253.ec2.internal"
+NODE1="worker-cluster-89pfx-5"
+NODE2="worker-cluster-89pfx-6"
 
 echo "Labelling tenant-b nodes..."
-oc label node ${NODE1} mesh=tenant-b
-oc label node ${NODE2} mesh=tenant-b
+oc label node ${NODE1} mesh=tenant-b --overwrite
+oc label node ${NODE2} mesh=tenant-b --overwrite
 
 echo "Tainting tenant-b nodes..."
-oc adm taint node ${NODE1} mesh=tenant-b:NoSchedule
-oc adm taint node ${NODE2} mesh=tenant-b:NoSchedule
+oc adm taint node ${NODE1} mesh=tenant-b:NoSchedule --overwrite
+oc adm taint node ${NODE2} mesh=tenant-b:NoSchedule --overwrite
 
 echo "Verifying..."
 oc get nodes ${NODE1} ${NODE2} \

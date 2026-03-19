@@ -1,0 +1,157 @@
+# =============================================================================
+# templates/cluster-templates.yaml
+#
+# MTO v1alpha1 Template + TemplateGroupInstance pattern.
+# ClusterTemplate does NOT exist in MTO v1.6 — the correct
+# approach is Template (defines the resource) +
+# TemplateGroupInstance (pushes it to matching namespaces).
+#
+# Each Template defines what to create.
+# Each TemplateGroupInstance selects which namespaces get it
+# using the label  stakater.com/mesh-profile: ambient
+# which MTO stamps on every tenant namespace via Tenant CR.
+#
+# Apply order:
+#   1. Templates (definitions)
+#   2. TemplateGroupInstances (distribution)
+# =============================================================================
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Template: tenant-network-policy
+# Baseline NetworkPolicy for every ambient-enrolled namespace.
+# ─────────────────────────────────────────────────────────────────────────────
+---
+apiVersion: tenantoperator.stakater.com/v1alpha1
+kind: Template
+metadata:
+  name: tenant-network-policy
+resources:
+  manifests:
+    - apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        name: mto-baseline-mesh-policy
+      spec:
+        podSelector: {}
+        policyTypes:
+          - Ingress
+        ingress:
+          # 1. Intra-namespace traffic
+          - from:
+              - podSelector: {}
+          # 2. Istio control-plane — istiod probes + ztunnel HBONE :15008
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: istio-system
+            ports:
+              - port: 15008
+                protocol: TCP
+              - port: 15020
+                protocol: TCP
+          # 3. Cross-namespace from tenant ingress namespace
+          - from:
+              - namespaceSelector:
+                  matchExpressions:
+                    - key: stakater.com/tenant-ingress
+                      operator: Exists
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Template: tenant-resource-quota
+# Default per-namespace ResourceQuota.
+# ─────────────────────────────────────────────────────────────────────────────
+---
+apiVersion: tenantoperator.stakater.com/v1alpha1
+kind: Template
+metadata:
+  name: tenant-resource-quota
+resources:
+  manifests:
+    - apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: mto-default-quota
+      spec:
+        hard:
+          requests.cpu: "4"
+          requests.memory: 8Gi
+          limits.cpu: "8"
+          limits.memory: 16Gi
+          pods: "50"
+          services: "20"
+          persistentvolumeclaims: "10"
+          count/gateways.gateway.networking.k8s.io: "2"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Template: tenant-limit-range
+# Default LimitRange so pods without explicit requests get
+# sane defaults (important for ztunnel resource accounting).
+# ─────────────────────────────────────────────────────────────────────────────
+---
+apiVersion: tenantoperator.stakater.com/v1alpha1
+kind: Template
+metadata:
+  name: tenant-limit-range
+resources:
+  manifests:
+    - apiVersion: v1
+      kind: LimitRange
+      metadata:
+        name: mto-default-limits
+      spec:
+        limits:
+          - type: Container
+            default:
+              cpu: 500m
+              memory: 512Mi
+            defaultRequest:
+              cpu: 100m
+              memory: 128Mi
+            max:
+              cpu: "4"
+              memory: 4Gi
+
+# =============================================================================
+# TemplateGroupInstances
+# Push each Template to all namespaces labelled
+#   stakater.com/mesh-profile: ambient
+# MTO stamps this label via the Tenant CR commonMetadata.
+# sync: true means MTO re-applies on every reconcile —
+# labels/resources are self-healing.
+# =============================================================================
+
+---
+apiVersion: tenantoperator.stakater.com/v1alpha1
+kind: TemplateGroupInstance
+metadata:
+  name: mesh-network-policy
+spec:
+  template: tenant-network-policy
+  sync: true
+  selector:
+    matchLabels:
+      stakater.com/mesh-profile: ambient
+
+---
+apiVersion: tenantoperator.stakater.com/v1alpha1
+kind: TemplateGroupInstance
+metadata:
+  name: mesh-resource-quota
+spec:
+  template: tenant-resource-quota
+  sync: true
+  selector:
+    matchLabels:
+      stakater.com/mesh-profile: ambient
+
+---
+apiVersion: tenantoperator.stakater.com/v1alpha1
+kind: TemplateGroupInstance
+metadata:
+  name: mesh-limit-range
+spec:
+  template: tenant-limit-range
+  sync: true
+  selector:
+    matchLabels:
+      stakater.com/mesh-profile: ambient

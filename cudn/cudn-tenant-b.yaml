@@ -1,0 +1,38 @@
+# =============================================================================
+# ClusterUserDefinedNetwork — cudn-tenant-b
+#
+# Verified conflict-free by network-config-verify.sh:
+#   clusterNetwork : 10.232.0.0/14   → no overlap
+#   serviceNetwork : 172.231.0.0/16  → no overlap
+#   OVN-K internal : 100.64.0.0/16   → no overlap
+#   node IPs       : 10.10.10.0/24   → no overlap
+#
+# Topology  : Layer2 Secondary
+#   Secondary = additional network interface on pods.
+#   Primary pod network (10.232.x.x) is NOT replaced.
+#   ztunnel continues to operate on primary interface.
+#   HBONE :15008 is unaffected.
+#
+# namespaceSelector uses label  mesh: tenant-b
+#   already stamped on bookinfo-b and bookinfo-ingress-b
+#   by TenantNamespace spec — no new labels needed.
+#
+# Spans BOTH tenant-b namespaces so gateway pod
+# (bookinfo-ingress-b) and workload pods (bookinfo-b)
+# share the same L2 segment — existing ReferenceGrant
+# and HTTPRoute continue to work without changes.
+# =============================================================================
+apiVersion: k8s.ovn.org/v1
+kind: ClusterUserDefinedNetwork
+metadata:
+  name: cudn-tenant-b
+spec:
+  namespaceSelector:
+    matchLabels:
+      mesh: tenant-b          # bookinfo-b + bookinfo-ingress-b
+  network:
+    topology: Layer2
+    layer2:
+      role: Secondary
+      subnets:
+        - "10.200.2.0/24"    # 254 usable hosts: 10.200.2.1 – 10.200.2.254

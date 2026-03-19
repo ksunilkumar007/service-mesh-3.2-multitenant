@@ -1,0 +1,108 @@
+# =============================================================================
+# tenant-a.yaml — MTO v1.6.1 / v1beta3 correct schema
+#
+# spec.namespaces.metadata.common   → labels on ALL tenant namespaces
+# spec.namespaces.metadata.specific → labels on NAMED namespaces only
+#
+# Use specific for istio.io/use-waypoint and stakater.com/mesh-waypoint
+# because ingress namespace (bookinfo-ingress-a) must NOT have use-waypoint —
+# the gateway IS the entry point, L7 enforcement is in bookinfo-a only.
+# =============================================================================
+
+---
+apiVersion: tenantoperator.stakater.com/v1beta1
+kind: Quota
+metadata:
+  name: tenant-a-quota
+  namespace: multi-tenant-operator
+spec:
+  resourcequota:
+    hard:
+      requests.cpu: "8"
+      requests.memory: 16Gi
+      limits.cpu: "16"
+      limits.memory: 32Gi
+      pods: "100"
+      services: "30"
+      count/gateways.gateway.networking.k8s.io: "4"
+  limitrange:
+    limits:
+      - type: Container
+        default:
+          cpu: 500m
+          memory: 512Mi
+        defaultRequest:
+          cpu: 100m
+          memory: 128Mi
+        max:
+          cpu: "4"
+          memory: 4Gi
+
+---
+apiVersion: tenantoperator.stakater.com/v1beta3
+kind: Tenant
+metadata:
+  name: tenant-a
+spec:
+  quota: tenant-a-quota
+
+  accessControl:
+    owners:
+      groups:
+        - tenant-a-admins
+    viewers:
+      groups:
+        - tenant-a-viewers
+        - mesh-platform-team
+
+  namespaces:
+    onDeletePurgeNamespaces: false
+    withoutTenantPrefix:
+      - bookinfo-a
+      - bookinfo-ingress-a
+
+    metadata:
+      # ── Labels applied to ALL tenant-a namespaces ──────────────────────────
+      common:
+        labels:
+          # istiod discoverySelector — istiod watches these namespaces
+          mesh: tenant-a
+          # REQUIRED for tracing — Telemetry CR defaultProviders pushes
+          # OTel config only to namespaces matching discoverySelectors.
+          # Missing this = no spans from waypoint proxies (lesson learned)
+          istio-discovery: enabled
+          # Belt-and-suspenders — prevents accidental sidecar injection
+          istio-injection: disabled
+          # Enrolls all pods in ambient mode via ztunnel
+          istio.io/dataplane-mode: ambient
+          # OpenShift user workload monitoring
+          openshift.io/user-monitoring: "true"
+          # TemplateGroupInstance selector — pushes NetworkPolicy + LimitRange
+          stakater.com/mesh-profile: ambient
+          # Node affinity — matches taint from label-taint-tenant-a.sh
+          topology.kubernetes.io/tenant: tenant-a
+          app.kubernetes.io/part-of: tenant-a
+          app.kubernetes.io/managed-by: stakater-mto
+        annotations:
+          kiali.io/member-of: tenant-a
+
+      # ── Labels applied to WORKLOAD namespace only ──────────────────────────
+      # bookinfo-ingress-a intentionally excluded:
+      #   gateway IS the entry point — use-waypoint on ingress ns would
+      #   redirect gateway traffic back through waypoint incorrectly.
+      specific:
+        - namespaces:
+            - bookinfo-a
+          labels:
+            # All L7 traffic goes through waypoint proxy
+            # Required for AuthorizationPolicy enforcement at L7
+            istio.io/use-waypoint: waypoint
+            # TemplateGroupInstance selector for waypoint-specific templates
+            stakater.com/mesh-waypoint: "true"
+
+        - namespaces:
+            - bookinfo-ingress-a
+          labels:
+            # Marks this as the ingress ns for tenant-a
+            # NetworkPolicy template allows cross-ns gateway → workload traffic
+            stakater.com/tenant-ingress: tenant-a

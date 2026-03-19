@@ -28,4 +28,4 @@ kind: Namespace
 metadata:
   name: ztunnel
   labels:
-    istio-discovery-a: enabled
+    istio-discovery: enabled

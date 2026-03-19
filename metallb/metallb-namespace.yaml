@@ -1,0 +1,24 @@
+# =============================================================================
+# MetalLB instance — metallb-namespace.yaml
+#
+# spec.speakerTolerations — correct field in metallb.io/v1beta1
+# (spec.speaker does not exist — use speakerTolerations directly)
+#
+# Allows speaker DaemonSet to run on tainted tenant worker nodes
+# so MetalLB can respond to ARP for 10.10.10.50/51 on those nodes.
+# =============================================================================
+apiVersion: metallb.io/v1beta1
+kind: MetalLB
+metadata:
+  name: metallb
+  namespace: metallb-system
+spec:
+  speakerTolerations:
+    - key: mesh
+      operator: Equal
+      value: tenant-a
+      effect: NoSchedule
+    - key: mesh
+      operator: Equal
+      value: tenant-b
+      effect: NoSchedule

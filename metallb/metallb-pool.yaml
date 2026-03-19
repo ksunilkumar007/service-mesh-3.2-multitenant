@@ -1,0 +1,22 @@
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: metallb-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 10.10.10.50-10.10.10.80
+  autoAssign: true
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: metallb-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - metallb-pool
+  # no nodeSelectors — all nodes with a speaker can announce
+  # previously restricted to node-role.kubernetes.io/worker=""
+  # which excluded tenant worker nodes from ARP responses

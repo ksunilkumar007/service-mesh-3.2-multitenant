@@ -1,0 +1,46 @@
+# =============================================================================
+# MetalLB Operator — final correct version
+#
+# Key learnings:
+#   1. MetalLB requires AllNamespaces install mode
+#   2. AllNamespaces OperatorGroup = spec: {}  (truly empty)
+#      NOT spec.targetNamespaces: []  (that is OwnNamespace = fails)
+#   3. Install in dedicated metallb-system namespace — not openshift-operators
+#      (openshift-operators causes pod selector + cert collisions with
+#       other operators sharing the same namespace)
+#   4. Only ONE AllNamespaces OperatorGroup can exist per namespace
+#      metallb-system has no other OperatorGroup — safe to use spec: {}
+# =============================================================================
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: metallb-system
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+
+---
+# spec: {} = AllNamespaces mode
+# This is NOT the same as spec.targetNamespaces: []
+# Empty spec tells OLM: watch all namespaces for operands
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: metallb-operator-group
+  namespace: metallb-system
+spec: {}
+
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: metallb-operator
+  namespace: metallb-system
+spec:
+  channel: stable
+  name: metallb-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic

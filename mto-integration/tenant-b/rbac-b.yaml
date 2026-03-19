@@ -1,0 +1,96 @@
+# =============================================================================
+# rbac-tenant-b.yaml
+#
+# Tenant-b specific RoleBindings ONLY.
+# References ClusterRoles defined in mto-integration/rbac/cluster-roles.yaml
+# which must be applied first.
+#
+# Namespaces bookinfo-b and bookinfo-ingress-b must exist
+# (created by tenant-b.yaml Tenant CR) before applying this file.
+# =============================================================================
+
+---
+# ── bookinfo-b — admin binding ───────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-b-admin-binding
+  namespace: bookinfo-b
+  labels:
+    app.kubernetes.io/managed-by: stakater-mto
+    app.kubernetes.io/component: rbac-tenant-b
+    stakater.com/tenant: tenant-b
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tenant-mesh-admin
+subjects:
+  - kind: Group
+    name: tenant-b-admins
+    apiGroup: rbac.authorization.k8s.io
+
+---
+# ── bookinfo-ingress-b — admin binding ───────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-b-admin-binding
+  namespace: bookinfo-ingress-b
+  labels:
+    app.kubernetes.io/managed-by: stakater-mto
+    app.kubernetes.io/component: rbac-tenant-b
+    stakater.com/tenant: tenant-b
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tenant-mesh-admin
+subjects:
+  - kind: Group
+    name: tenant-b-admins
+    apiGroup: rbac.authorization.k8s.io
+
+---
+# ── bookinfo-b — viewer binding ──────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-b-viewer-binding
+  namespace: bookinfo-b
+  labels:
+    app.kubernetes.io/managed-by: stakater-mto
+    app.kubernetes.io/component: rbac-tenant-b
+    stakater.com/tenant: tenant-b
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tenant-mesh-viewer
+subjects:
+  - kind: Group
+    name: tenant-b-viewers
+    apiGroup: rbac.authorization.k8s.io
+  - kind: Group
+    name: mesh-platform-team
+    apiGroup: rbac.authorization.k8s.io
+
+---
+# ── bookinfo-ingress-b — viewer binding ──────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-b-viewer-binding
+  namespace: bookinfo-ingress-b
+  labels:
+    app.kubernetes.io/managed-by: stakater-mto
+    app.kubernetes.io/component: rbac-tenant-b
+    stakater.com/tenant: tenant-b
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tenant-mesh-viewer
+subjects:
+  - kind: Group
+    name: tenant-b-viewers
+    apiGroup: rbac.authorization.k8s.io
+  - kind: Group
+    name: mesh-platform-team
+    apiGroup: rbac.authorization.k8s.io

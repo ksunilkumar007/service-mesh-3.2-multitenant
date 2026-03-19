@@ -31,5 +31,4 @@ kind: Namespace
 metadata:
   name: istio-cni
   labels:
-    istio-discovery-a: enabled
-    istio-discovery-b: enabled
+    istio-discovery: enabled

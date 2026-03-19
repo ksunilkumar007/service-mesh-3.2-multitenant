@@ -1,0 +1,127 @@
+# =============================================================================
+# cluster-roles.yaml
+#
+# Shared ClusterRoles for ALL tenants.
+# Defined ONCE cluster-wide — every tenant's RoleBindings reference these.
+#
+# Apply BEFORE any tenant RoleBinding yaml.
+#
+# Contains:
+#   tenant-mesh-admin   full CRUD on Gateway API + Istio + workload resources
+#   tenant-mesh-viewer  read-only across the same resource groups
+# =============================================================================
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-mesh-admin
+  labels:
+    app.kubernetes.io/managed-by: stakater-mto
+    app.kubernetes.io/component: rbac-common
+rules:
+  # Gateway API
+  - apiGroups: [gateway.networking.k8s.io]
+    resources:
+      - gateways
+      - httproutes
+      - referencegrants
+      - grpcroutes
+      - tcproutes
+    verbs: [get, list, watch, create, update, patch, delete]
+
+  # Istio networking
+  - apiGroups: [networking.istio.io]
+    resources:
+      - virtualservices
+      - destinationrules
+      - serviceentries
+      - workloadentries
+    verbs: [get, list, watch, create, update, patch, delete]
+
+  # Istio security
+  - apiGroups: [security.istio.io]
+    resources:
+      - authorizationpolicies
+      - peerauthentications
+      - requestauthentications
+    verbs: [get, list, watch, create, update, patch, delete]
+
+  # Istio telemetry
+  - apiGroups: [telemetry.istio.io]
+    resources:
+      - telemetries
+    verbs: [get, list, watch, create, update, patch, delete]
+
+  # Core workload resources
+  - apiGroups: [""]
+    resources:
+      - pods
+      - services
+      - endpoints
+      - configmaps
+      - serviceaccounts
+    verbs: [get, list, watch, create, update, patch, delete]
+
+  - apiGroups: [apps]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+    verbs: [get, list, watch, create, update, patch, delete]
+
+  # Quota + limits — read-only (MTO owns these)
+  - apiGroups: [""]
+    resources:
+      - resourcequotas
+      - limitranges
+    verbs: [get, list, watch]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-mesh-viewer
+  labels:
+    app.kubernetes.io/managed-by: stakater-mto
+    app.kubernetes.io/component: rbac-common
+rules:
+  - apiGroups:
+      - gateway.networking.k8s.io
+      - networking.istio.io
+      - security.istio.io
+      - telemetry.istio.io
+      - ""
+      - apps
+    resources: ["*"]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: template-operator-mesh-resources
+  labels:
+    app.kubernetes.io/managed-by: stakater-mto
+rules:
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: ["resourcequotas", "limitranges"]
+    verbs: [get, list, watch, create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: template-operator-mesh-resources
+  labels:
+    app.kubernetes.io/managed-by: stakater-mto
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: template-operator-mesh-resources
+subjects:
+  - kind: ServiceAccount
+    name: template-operator-controller-manager
+    namespace: multi-tenant-operator
